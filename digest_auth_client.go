@@ -19,6 +19,7 @@ type DigestRequest struct {
 	Wa         *wwwAuthenticate
 	CertVal    bool
 	HTTPClient *http.Client
+	Timeout    int
 }
 
 type DigestTransport struct {
@@ -29,7 +30,9 @@ type DigestTransport struct {
 
 // NewRequest creates a new DigestRequest object
 func NewRequest(username, password, method, uri, body string) DigestRequest {
-	dr := DigestRequest{}
+	dr := DigestRequest{
+		Timeout: 5,
+	}
 	dr.UpdateRequest(username, password, method, uri, body)
 	dr.CertVal = true
 	return dr
@@ -54,7 +57,7 @@ func (dr *DigestRequest) getHTTPClient() *http.Client {
 	}
 
 	return &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: time.Duration(dr.Timeout) * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tlsConfig,
 		},
@@ -71,24 +74,6 @@ func (dr *DigestRequest) UpdateRequest(username, password, method, uri, body str
 	dr.Username = username
 	dr.Header = make(map[string][]string)
 	return dr
-}
-
-// RoundTrip implements the http.RoundTripper interface
-func (dt *DigestTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	username := dt.Username
-	password := dt.Password
-	method := req.Method
-	uri := req.URL.String()
-
-	var body string
-	if req.Body != nil {
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(req.Body)
-		body = buf.String()
-	}
-
-	dr := NewRequest(username, password, method, uri, body)
-	return dr.Execute()
 }
 
 // Execute initialise the request and get a response
